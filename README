@@ -14,8 +14,7 @@ To get GenCV, first make sure you have Git installed, then:
     git clone git://github.com/mkramlich/gencv.git
 
 GenCV uses ReportLab to generate PDF resumes. To get ReportLab and install it I did something like this:
-    wget http://www.reportlab.org/ftp/ReportLab_2_1.tgz
-    cd dir
+    curl -O http://www.reportlab.org/ftp/ReportLab_2_1.tgz
     tar -xzvf ReportLab_2_1.tgz
     cd reportlab
     python setup.py install
