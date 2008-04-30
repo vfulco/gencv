@@ -23,7 +23,7 @@ profile = 'sample'
 EOL = '<br/>\n'
 
 def cmd(cmdline):
-	return commands.getoutput(cmdline)
+    return commands.getoutput(cmdline)
 
 def sp(qty=1):
     return '' * qty
