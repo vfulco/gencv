@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# this script assumes PWD is GenCV's install root
+
+PROFILE=$1
+GEN_ROOT=$2
+
+cp -R profiles/$PROFILE/photos $GEN_ROOT
+cp -R profiles/$PROFILE/codesamples $GEN_ROOT
+cp -R profiles/$PROFILE/presentations $GEN_ROOT
+
+chmod 711 $GEN_ROOT/photos
+chmod 644 $GEN_ROOT/photos/*
+chmod 711 $GEN_ROOT/codesamples
+chmod 644 $GEN_ROOT/codesamples/*
+chmod 711 $GEN_ROOT/presentations
+chmod 644 $GEN_ROOT/presentations/*

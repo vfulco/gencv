@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd generated
+tar -czvf ../dist/onlinecv.tgz --exclude .DS_Store --exclude ^.* *

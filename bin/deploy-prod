@@ -1,0 +1,15 @@
+#!/bin/sh
+
+PROD=$1
+#example: someuser@host.com
+
+USERDIR=$2
+#example: /home/someuser
+
+CVDIR=$3
+#example: onlinecv
+
+FILE=onlinecv.tgz
+
+scp dist/$FILE $PROD:$USERDIR/$FILE
+ssh $PROD chmod 711 $CVDIR\; cd $CVDIR\; tar -xzvf ../$FILE

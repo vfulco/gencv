@@ -1,0 +1,79 @@
+GenCV
+by Mike Kramlich
+
+What is it?
+
+GenCV is a command-line tool for automating the data-driven generation of resumes and web-based online CV's, with particular emphasis on supporting multiple model profiles (different people or takes), multiple resume versions, multiple resume formats, and ensuring that everything is always up-to-date and in synch.
+
+Requirements:
+    To get GenCV directly from the online repo at GitHub you'll need Git. If you get a tarball of GenCV some other way then Git is not needed.
+    To run GenCV you'll need Python.
+    To gen resumes in PDF format you need ReportLab. (GenCV pukes without it.)
+
+To get GenCV, first make sure you have Git installed, then:
+    git clone git://github.com/mkramlich/gencv.git
+
+GenCV uses ReportLab to generate PDF resumes. To get ReportLab and install it I did something like this:
+    wget http://www.reportlab.org/ftp/ReportLab_2_1.tgz
+    cd dir
+    tar -xzvf ReportLab_2_1.tgz
+    cd reportlab
+    python setup.py install
+Then to check if it worked correctly, do something like this:
+    python
+    >>> import reportlab
+
+To run GenCV the first time and have it generate a sample website and resumes, first ensure that GenCV's 'bin' dir is in your PATH, then cd into the GenCV directory (bear with me, method-to-madness), then issue this command:
+    gcv
+
+To view the website it generated, open the file 'generated/index.html' in a web browser. That path is relative to wherever you issued the 'gcv' command. Also in the 'generated/resumes/' directory you'll find the standalone PDF and TXT file resumes it generated.
+
+For production deployment:
+    A web server that you can configure to serve static files, and file space on which to host them, and you have an ability to upload the files there somehow.
+    You do not need Python or shell scripting ability in production.
+
+Not too hard, eh? Though we don't provide any of the above, it should be pretty easy for you to get them if you don't already. Mac OS X needs ReportLab but already has Python. It's pretty easy and cheap to get Linux web hosting for production deployement. If you want to run GenCV on Windows, I'm sorry... No, really. I'm sorry. But seriously, you'll have to install Python & ReportLab and that's it. Have not tested it on Windows, nor do I want to. If someone does and finds a prblem let me know or even better submit a patch to me that fixes it.
+
+Instructions:
+
+1. modify content of files in data/ to reflect you, your data, and your website
+2. populate codesamples/ and photos/ subdirectory as desired
+3. run "gen-cv [<profile>]" to generate website (it uses the 'sample' profile unless you specify one)
+4. push all generated website pages and content files up to your host environment (use bin/deploy-prod or write a wrapper script to call it)
+5. if your web server is configured correctly and can serve static files, it should all now be live and accessible to the public
+
+Whenever you want to change the model content of your resume or CV simply repeat steps 1-4, as needed.
+
+Since all the files generated are static HTML, you'll get excellent performance out of your web server. They should all be able to live in memory, and thus fast response times. And they place nice with caches, server-side, proxies in the middle, and client-side. You almost can't get any faster than this architecture. Well, not without quantum technology. That's coming in GenCV 9000++. Stay tuned for further details as they become available.
+
+TODO
+
+Q. How do I change the content/layout of the TXT resumes generated?
+A. Create a new TXT resume template, possibly starting with a clone of existing one. Or edit an existing one. Or worst case modify the Python code. I'll be revising the code in the future to make it easier to extend in these ways.
+
+Q. How do I change the content/layout of the PDF resumes generated?
+A. You do it indirectly by changing it in the equivalent TXT resume. Currently each PDF resume version generated is effectively a clone of the content of the TXT resume (template) with the comparable name. I hope to unlock this relationship in the future and make it easier to customize it.
+
+Q. How do I change the content/layout of the website generated?
+A. The only way currently is by modifying the Python code. I plan on improving this in the future. Possibly by converting to use templates and CSS. This feature wasn't critical for my needs and I wanted to get the first version out the door.
+
+Q. What if I want to add additional data types, structures or content, not supported by GenCV out-of-the-box?
+A. No problem. Go ahead and do it. Hack away on the Python code. I do ask that you let me know about it by sending me an email, for example. Because if it's a common enough of a need I may implement it in a future version of GenCV. Also if you want feel free to contribute back your changes so I can integrate into my master branch/repo, even better.
+
+Contact Info:
+
+Mike Kramlich
+groglogic@gmail.com
+
+GitHub profile:                  http://github.com/mkramlich
+LinkedIn profile:                http://www.linkedin.com/pub/3/ab7/51a
+my game company, ZodLogic Games: http://zodlogic.webfactional.com/
+startup blog:                    http://groglogic.blogspot.com/
+non-fiction blog:                http://grogdelta.blogspot.com/
+creative writing blog:           http://grograma.blogspot.com/
+
+That's it!
+
+thanks,
+
+Mike

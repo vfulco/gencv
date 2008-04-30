@@ -1,0 +1,2 @@
+fry2word
+command-line tool for converting French fries into Word documents. It's messy and somewhat lossy. It's like 100k LOC, mostly comments. The heart of it is a call to a COM service bridge to a DCOM wrapper around an ActiveX control embedded in an IE 5.2-only web page, with an IIS backend, that does the bulk of the actual conversion work. Latency and memory use are non-ideal, I'm told, though I do not know what those terms mean. Anyway, it gots me the job at Microshoft.

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# this assumes PWD is GenCV's install root
+
+gen-cv $*

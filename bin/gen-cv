@@ -1,0 +1,454 @@
+#!/usr/bin/env python2.4
+
+'''
+GenCV: a tool for data-driven generation of resumes and CV websites
+by Mike Kramlich
+'''
+
+import commands
+import os
+from xml.sax.saxutils import escape
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph
+
+GenCV_URL = 'http://github.com/mkramlich/gencv/tree/master'
+
+template_dir = 'templates'
+gen_root = 'generated/'
+profile = 'sample'
+
+EOL = '<br/>\n'
+
+def cmd(cmdline):
+	return commands.getoutput(cmdline)
+
+def sp(qty=1):
+    return '' * qty
+
+def nbsp(qty=1):
+    return '&nbsp;' * qty
+
+def tab(qty=1):
+    return nbsp(qty*4)
+
+def quote(txt):
+    return '&quot;' + txt + '&quot;'
+
+def ital(txt):
+    return '<i>' + txt + '</i>'
+
+def bold(txt):
+    return '<b>' + txt + '</b>'
+
+def table(rows=[[],]):
+    s = '<table>\n'
+    for row in rows:
+        s += '<tr>\n'
+        for cell in row:
+            s += sp(4) + '<td>%s</td>\n' % cell
+        s += '</tr>\n'
+    s += '</table>\n'
+    return s
+
+def file_as_lines(fname):
+    f = file(fname,'r')
+    lns = f.readlines()
+    f.close()
+    return lns
+
+def data_as_lines(fname):
+    return file_as_lines('profiles/%s/data/%s' % (profile,fname))
+
+def create_file(fname, body):
+    f = file(fname,'w')
+    f.write(body)
+    f.close()
+
+def image_link_local(fname):
+    return '<img src="photos/%s"/>' % fname
+
+def thumbnail_to_image_link_local(thumbfname, fullfname):
+    return '<a href="photos/%s"><img src="photos/%s"/></a>' % (fullfname,thumbfname)
+
+def value_on_line(lines, lineno):
+    return lines[lineno].rstrip().split('=')[1]
+
+def link(text, url):
+    return '<a href="%s">%s</a>' % (url, text)
+
+def sort_jobs_recent_first(jobs):
+    j2 = list(jobs)
+
+    def cmp_(a, b):
+        if a.to == 'present':
+            if b.to == 'present': return 0
+            else: return +1
+        if b.to == 'present':
+            return -1
+        ma,ya = a.to.split('/')
+        mb,yb = b.to.split('/')
+        ma = int(ma)
+        ya = int(ya)
+        mb = int(mb)
+        yb = int(yb)
+        if ya == yb:
+            return cmp(ma,mb)
+        else:
+            return cmp(ya,yb)
+
+    j2.sort(cmp=cmp_,reverse=True)
+    return j2
+
+def html_encode(s):
+    return escape(s, {'"':'&quot;'})
+
+def get_model():
+    lns = data_as_lines('main')
+
+    baseurl = value_on_line(lns,0)
+    name = value_on_line(lns,1)
+    email = value_on_line(lns,2)
+    title = value_on_line(lns,3)
+    location = value_on_line(lns,4)
+    linkedin = value_on_line(lns,5)
+
+    quotes = data_as_lines('quotes')
+
+    jobs = []
+    jobsroot = 'profiles/%s/data/jobs' % profile
+    jobfnames = os.listdir(jobsroot)
+    class Job: pass
+    for jobfname in jobfnames:
+        job = Job()
+        lns = file_as_lines(jobsroot + '/' + jobfname)
+        job.title = value_on_line(lns,0)
+        job.company = value_on_line(lns,1)
+        job.ffrom = value_on_line(lns,2)
+        job.to = value_on_line(lns,3)
+        job.website = value_on_line(lns,4)
+        jobs.append(job)
+    jobs = sort_jobs_recent_first(jobs)
+
+    edus = []
+    eduroot = 'profiles/%s/data/edu' % profile
+    edufnames = os.listdir(eduroot)
+    class Edu: pass
+    for edufname in edufnames:
+        edu = Edu()
+        lns = file_as_lines(eduroot + '/' + edufname)
+        edu.school_name = value_on_line(lns,0)
+        edu.topics = value_on_line(lns,1)
+        edu.ffrom = value_on_line(lns,2)
+        edu.to = value_on_line(lns,3)
+        edu.desc = value_on_line(lns,4)
+        edus.append(edu)
+
+    wares = []
+    swroot = 'profiles/%s/data/software/' % profile
+    wfnames = os.listdir(swroot)
+    class Software: pass
+    for wfname in wfnames:
+        fpath = swroot + wfname
+        lns = file_as_lines(fpath)
+        ware = Software()
+        ware.name = lns[0]
+        rest = 1
+        if lns[1].startswith('url='):
+            ware.url = lns[1].split('=')[1]
+            rest = 2
+        else: ware.url = None
+        ware.desc = lns[rest:]
+        wares.append(ware)
+
+    summary = data_as_lines('desc')
+
+    return baseurl, name, title, location, summary, email, linkedin, quotes, jobs, edus, wares
+
+def create_codesample_page(codefname, codesamples_root, i):
+    s = codefname + ':' + EOL
+    code = ''
+    lns = file_as_lines(codesamples_root + '/' + codefname)
+    for ln in lns:
+        code += ln
+    code = html_encode(code)
+    s +=  '<code><pre>%s</pre></code>' % code + EOL
+    page = 'pages/codesamp-%s.html' % i
+    create_file(gen_root+page,s)
+    lang = '?'
+    if codefname.endswith('.py'):
+        lang = 'Python'
+    elif codefname.endswith('.java'):
+        lang = 'Java'
+    elif codefname.endswith('.c'):
+        lang = 'C'
+    elif codefname.endswith('.sh'):
+        lang = 'Bourne shell'
+    linecount = len(lns)
+    return page, lang, linecount
+
+def create_codesamples_page(codesamplespage, baseurl):
+    s = 'Code Samples' + EOL
+
+    s += EOL + 'On Site' + EOL
+    codesamples_root = 'profiles/%s/codesamples' % profile
+    codefnames = os.listdir(codesamples_root)
+    csi = 0
+    rows = []
+    for codefname in codefnames:
+        if codefname.startswith('.'):
+            continue
+        pagefname, lang, linecount = create_codesample_page(codefname,codesamples_root,csi)
+        html_link = link('as HTML',baseurl+pagefname)
+        direct_link = link('as actual', baseurl+codesamples_root+'/'+codefname)
+        row = [tab() + '%s' % codefname, tab()+lang, tab()+str(linecount)+' lines', tab()+html_link, tab()+direct_link]
+        rows.append(row)
+        csi += 1
+    s += table(rows) + EOL
+
+    s += EOL + 'Off Site' + EOL
+    lns = data_as_lines('codesamples_offsite')
+    rows = []
+    for ln in lns:
+        d = ln.find(':')
+        lang = ln[:d].strip()
+        url = ln[d+1:].strip()
+        row = [tab() + '%s:' % lang, '%s' % link(url,url)]
+        rows.append(row)
+    s += table(rows) + EOL
+
+    create_file(gen_root+codesamplespage,s)
+
+def render_beliefs():
+    s = 'Observations & Beliefs' + EOL
+    lns = data_as_lines('beliefs')
+    beliefs = []
+    class Belief: pass
+    belief = None
+    for ln in lns:
+        if ln.startswith('tags:'):
+            belief = Belief()
+            beliefs.append(belief)
+            belief.body = []
+            pcs = ln.split(':')
+            tags = pcs[1].strip()
+            tags = tags.split(',')
+            tags2 = []
+            for t in tags:
+                tags2.append(t.strip())
+            tags = tags2
+            belief.tags = tags
+            continue
+        if ln.strip() == '':
+            continue
+        belief.body.append(ln.strip())
+
+    for b in beliefs:
+        s += EOL
+        for ln in b.body:
+            s += tab() + ln + EOL
+        tags = ', '.join(b.tags)
+        s += tab(2) + ital('tags: %s' % tags) + EOL
+    return s
+
+def obfuscate_email_for_scrapers(email):
+    return email #TODO make it really obfuscate; example: interleave -'s
+
+def generate_cv_web(baseurl, name, title, location, summary, email, linkedin, quotes, jobs, edus, wares):
+    cmd('push-static-to-gen %s %s' % (profile, gen_root))
+    cmd('chmod 644 %sresumes/*' % gen_root)
+
+    s = 'Online CV' + EOL*2
+    s += name + EOL
+    s += title + EOL
+    s += location + EOL
+    s += EOL
+
+    imagefnames = os.listdir('profiles/%s/photos' % profile)
+    thumbs = {}
+    fulls = []
+    for imagefname in imagefnames:
+        if '.thumb.' in imagefname:
+            pcs = imagefname.split('.thumb.')
+            full = pcs[0] + '.' + pcs[1]
+            thumbs[full] = imagefname
+        else:
+            fulls.append(imagefname)
+
+    for full in fulls:
+        if full in thumbs:
+            s += thumbnail_to_image_link_local(thumbs[full],full)
+        else:
+            s += image_link_local(full)
+    s += EOL
+
+    s += EOL + 'Summary' + EOL
+    for dln in summary:
+        s += EOL + dln
+    s += EOL
+
+    s += EOL + 'Code Samples' + EOL*2
+    codesamplespage = 'pages/codesamples.html'
+    create_codesamples_page(codesamplespage,baseurl)
+    s += tab() + link('click here',baseurl+codesamplespage) + EOL
+
+    s += EOL + 'Employment' + EOL
+    for j in jobs:
+        s += EOL
+        s += tab() + j.title + EOL
+        s += tab() + link(j.company,j.website) + EOL
+        s += tab() + j.ffrom + ' - ' + j.to + EOL
+        s += tab() + 'company website: ' + link(j.website,j.website) + EOL
+
+    s += EOL + 'Education' + EOL
+    for edu in edus:
+        s += EOL + tab() + '%s, %s-%s' % (edu.school_name, edu.ffrom, edu.to)
+    s += EOL
+
+    s += EOL + 'Websites Created' + EOL
+    for ln in data_as_lines('websites_created'):
+        s += EOL
+        pcs = ln.split(',')
+        name = pcs[0].strip()
+        url = pcs[1].strip()
+        techs = pcs[2].strip()
+        techs = techs.split(';')
+        s += tab() + link(name,url) + EOL
+        s += tab() + ital('used: ' + ', '.join(techs)) + EOL
+
+    s += EOL + 'Software Created' + EOL
+    for ware in wares:
+        s += EOL + tab() + ital(ware.name) + EOL
+        s += tab() + EOL.join(ware.desc) + EOL
+        if ware.url is not None:
+            s += tab() + 'see it: ' + link(ware.url,ware.url) + EOL
+
+    s += EOL + 'Presentations' + EOL*2
+    fnames = os.listdir(gen_root+'presentations')
+    for fname in fnames:
+        txt = fname
+        url = baseurl + 'presentations/' + fname
+        s += tab() + link(txt,url) + EOL
+
+    s += EOL + 'Blogs' + EOL*2
+    rows = []
+    for ln in data_as_lines('blogs'):
+        pcs = ln.split(',')
+        name = pcs[0].strip()
+        url = pcs[1].strip()
+        desc = pcs[2].strip()
+        row = (tab()+link(name,url), desc)
+        rows.append(row)
+        #s += tab() + link(name,url) + tab() + desc + EOL
+    s += table(rows) + EOL
+
+    s += EOL + render_beliefs() + EOL
+
+    s += EOL + 'Quotes' + EOL*2
+    for q in quotes:
+        s += tab() + quote(q.strip()) + EOL
+
+    s += EOL + 'Online Profiles' + EOL*2
+    s += tab() + link('LinkedIn.com',linkedin) + EOL
+
+    s += EOL + 'Downloadable Resumes' + EOL*2
+    fnames = os.listdir(gen_root+'resumes')
+    for fname in fnames:
+        format = fname.split('.')[-1]
+        txt = fname
+        url = baseurl + 'resumes/' + fname
+        s += tab() + link(txt,url) + EOL
+
+    s += EOL + 'Contact Info' + EOL*2
+    email = obfuscate_email_for_scrapers(email)
+    s += tab() + 'email: ' + link(email,'mailto:'+email) + EOL
+
+    s += '<!--This website was made using GenCV. GenCV made by Mike Kramlich. Get it at %s-->' % GenCV_URL
+
+    create_file(gen_root+'index.html',s)
+
+def generate_resume_txt(baseurl, name, title, location, summary, email, linkedin, quotes, jobs, edus, wares, resume_template='default'):
+    s = 'Jobs:\n'
+    def tab(): return '' * 4
+    for j in jobs:
+        s += '\n'
+        s += tab() + j.title + '\n'
+        s += tab() + j.company + '\n'
+        s += tab() + j.ffrom + ' - ' + j.to + '\n'
+        s += tab() + 'company website: ' + j.website + '\n'
+    jobs = s
+    params = {
+        'name' :     name,
+        'location' : location,
+        'summary' :  'Summary:\n\n' + ''.join(summary),
+        'email' :    email,
+        'jobs' :     jobs}
+    out_lns = []
+    templ_lns = file_as_lines('%s/%s' % (template_dir,resume_template))
+    for ln in templ_lns:
+        out_lns.append(ln.rstrip() % params)
+    s = '\n'.join(out_lns) + '\n'
+    resume_fname = 'resume_%s.txt' % resume_template
+    fpath = gen_root + 'resumes/' + resume_fname
+    create_file(fpath,s)
+
+def generate_resume_pdf(baseurl, name, title, location, summary, email, linkedin, quotes, jobs, edus, wares, resume_template='default'):
+    stylesheet = getSampleStyleSheet()
+    parastyle = stylesheet['Normal']
+    txtresumes = ['resume_default.txt','resume_alternate.txt']
+    for txtresume in txtresumes:
+        txtresume_base = '.'.join(txtresume.split('.')[:-1])
+        pdf_fpath = gen_root + 'resumes/' + txtresume_base + '.pdf'
+        size = letter
+        width, height = size
+        c = canvas.Canvas(pdf_fpath,pagesize=size)
+        txt_fpath = gen_root + 'resumes/' + txtresume
+        lns = file_as_lines(txt_fpath)
+        margin = inch / 2
+        left = margin
+        top = margin
+        w_avail = width - (left * 2)
+        h_avail = height - (top * 2)
+        for ln in lns:
+            ln = ln.strip()
+            if len(ln) == 0:
+                h_avail -= inch / 4
+                continue
+            ln = html_encode(ln)
+            para = Paragraph(ln,parastyle)
+            w_actual, h_actual = para.wrap(w_avail,h_avail)
+            #print '%s x %s for "%s..."' % (w_actual, h_actual,
+            #    len(ln) > 16 and ln[:16] or ln)
+            if w_actual <= w_avail and h_actual <= h_avail:
+                h_avail -= h_actual
+                para.drawOn(c,left,h_avail)
+            else: raise ValueError, 'paragraph wont fit, needs %s x %s but only has %s x %a; text: "%s"' % (w_actual,h_actual,width,height,ln)
+        c.showPage()
+        c.save()
+
+
+if __name__ == '__main__':
+    import sys
+
+    print ' '.join(sys.argv)
+
+    if len(sys.argv) >= 2:
+        profile = sys.argv[1]
+
+    model = get_model()
+
+    if len(sys.argv) >= 3:
+        model = list(model)
+        model[0] = sys.argv[2]
+
+    template_fnames = os.listdir(template_dir)
+    for tfname in template_fnames:
+        m = list(model)
+        m.append(tfname)
+        generate_resume_txt(*m)
+
+    generate_resume_pdf(*m)
+
+    generate_cv_web(*model)

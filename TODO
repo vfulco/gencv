@@ -1,0 +1,58 @@
+TODO
+----
+
+FINISH the obfuscate_email function
+
+generate a resume in HTML format (single file, downloadable)
+
+page with form/button where the visitor can request contact information
+
+sys args should not be order-dependent, allow user to give any/all, in whatever order is best for them
+
+written pieces gallery
+    or links to off-site pieces
+
+image gallery
+    or links to off-site images
+
+generated resume files should cite URL of online CV (created by GenCV), if known/exists/applicable
+
+distinction between photos of you, vs. photos you've made (not of you) vs. images you've drawn/generated (programmaticlly or art-by-hand, painted, etc.)
+
+source code gallery
+
+links to online video
+
+audio downloads
+
+references
+
+data model file includes data on past employment, and projects performed, timeline, like in a resume
+
+education, degrees, awards, certificates
+
+tutorials written
+books written
+magazine articles written
+academic papers written
+artwork created/drawn
+diagrams created
+
+links to sites where you have an online presence (forums, clubs), including a link directly to your profile page on that site, as well as links to things you've posted or submitted to that site (comments, posts, reviews, blog comments, etc.)
+
+association memberships, time period, titles held, accomplishments/projects related to each
+
+software development documentation artifacts created (requirements docs, design docs, project plans, estimates, post-mortems, UML model diagrams, etc.)
+
+friends: names, links to their sites/profiles
+
+create enduser documentation
+
+books read
+patents held, issued, assigned, co-granted, whatever
+academic papers published
+books editted
+civic awards
+clubs belonged to
+non-profit organization membership or offices held
+records held (as in Guiness book of world records...ok, this may be pushing it)
