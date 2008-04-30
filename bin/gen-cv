@@ -178,10 +178,20 @@ def create_codesample_page(codefname, codesamples_root, i):
     page = 'pages/codesamp-%s.html' % i
     create_file(gen_root+page,s)
     suf2lang = {
+        'sh'   : 'Bourne shell',
+        'zsh'  : 'Z shell',
+        'ksh'  : 'Korn shell',
+        'lisp' : 'Lisp',
         'py'   : 'Python',
+        'rb'   : 'Ruby',
+        'pl'   : 'Perl',
         'java' : 'Java',
+        'erl'  : 'Erlang',
+        'for'  : 'Fortran',
+        'd'    : 'D',
+        'cpp'  : 'C++',
         'c'    : 'C',
-        'sh'   : 'Bourne-ish shell'}
+        'asm'  : 'assembly'}
     suf = ('.' in codefname) and codefname.split('.')[-1] or None
     lang = suf and (suf in suf2lang) and suf2lang[suf] or '?'
     linecount = len(lns)
