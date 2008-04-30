@@ -449,6 +449,6 @@ if __name__ == '__main__':
         m.append(tfname)
         generate_resume_txt(*m)
 
-    generate_resume_pdf(*m)
+    generate_resume_pdf(*model)
 
     generate_cv_web(*model)
