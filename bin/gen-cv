@@ -177,15 +177,13 @@ def create_codesample_page(codefname, codesamples_root, i):
     s +=  '<code><pre>%s</pre></code>' % code + EOL
     page = 'pages/codesamp-%s.html' % i
     create_file(gen_root+page,s)
-    lang = '?'
-    if codefname.endswith('.py'):
-        lang = 'Python'
-    elif codefname.endswith('.java'):
-        lang = 'Java'
-    elif codefname.endswith('.c'):
-        lang = 'C'
-    elif codefname.endswith('.sh'):
-        lang = 'Bourne shell'
+    suf2lang = {
+        'py'   : 'Python',
+        'java' : 'Java',
+        'c'    : 'C',
+        'sh'   : 'Bourne-ish shell'}
+    suf = ('.' in codefname) and codefname.split('.')[-1] or None
+    lang = suf and (suf in suf2lang) and suf2lang[suf] or '?'
     linecount = len(lns)
     return page, lang, linecount
 
