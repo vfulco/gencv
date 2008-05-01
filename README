@@ -35,17 +35,16 @@ Not too hard, eh? Though we don't provide any of the above, it should be pretty 
 
 Instructions:
 
-1. modify content of files in data/ to reflect you, your data, and your website
-2. populate codesamples/ and photos/ subdirectory as desired
-3. run "gen-cv [<profile>]" to generate website (it uses the 'sample' profile unless you specify one)
-4. push all generated website pages and content files up to your host environment (use bin/deploy-prod or write a wrapper script to call it)
+1. modify content of files in profiles/<yourprofile>/ to reflect you, your data, and your website; you are free to leave most data fields blank, and directories empty, including codesamples/, presentations/ and photos/; some things like name and title are required
+2. run "gen-cv [<profile> [<baseurl>]]" to generate website (it uses the 'sample' profile unless you specify one; uses baseurl value in the profile data UNLESS you override by specifying one here)
+4. push all generated website pages and content files up to your host environment (as a convenience if your deploy host is compatible, use bin/deploy-prod or write a wrapper script to call it)
 5. if your web server is configured correctly and can serve static files, it should all now be live and accessible to the public
 
 Whenever you want to change the model content of your resume or CV simply repeat steps 1-4, as needed.
 
 Since all the files generated are static HTML, you'll get excellent performance out of your web server. They should all be able to live in memory, and thus fast response times. And they place nice with caches, server-side, proxies in the middle, and client-side. You almost can't get any faster than this architecture. Well, not without quantum technology. That's coming in GenCV 9000++. Stay tuned for further details as they become available.
 
-TODO
+FAQ
 
 Q. How do I change the content/layout of the TXT resumes generated?
 A. Create a new TXT resume template, possibly starting with a clone of existing one. Or edit an existing one. Or worst case modify the Python code. I'll be revising the code in the future to make it easier to extend in these ways.
