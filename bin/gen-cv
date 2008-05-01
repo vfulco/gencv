@@ -19,6 +19,7 @@ GenCV_URL = 'http://github.com/mkramlich/gencv/tree/master'
 template_dir = 'templates'
 gen_root = 'generated/'
 profile = 'sample'
+should_obfuscate_email_on_web = True
 
 EOL = '<br/>\n'
 
@@ -272,7 +273,7 @@ def render_beliefs():
     return s
 
 def obfuscate_email_for_scrapers(email):
-    return email #TODO make it really obfuscate; example: interleave -'s
+    return '-'.join(email)
 
 def generate_cv_web(baseurl, name, title, location, summary, email, linkedin, quotes, jobs, edus, wares):
     cmd('push-static-to-gen %s %s' % (profile, gen_root))
@@ -396,8 +397,12 @@ def generate_cv_web(baseurl, name, title, location, summary, email, linkedin, qu
 
     if len(email) > 0:
         s += EOL + 'Contact Info' + EOL*2
-        email = obfuscate_email_for_scrapers(email)
-        s += tab() + 'email: ' + link(email,'mailto:'+email) + EOL
+        if should_obfuscate_email_on_web:
+            email = obfuscate_email_for_scrapers(email)
+            s += tab() + 'email: ' + email + EOL
+            s += tab() + ital("NOTE: Email address above is obfuscated to fight spammers/scrapers. Remove extra -'s.") + EOL
+        else:
+            s += tab() + 'email: ' + link(email,'mailto:'+email) + EOL
 
     s += '<!--This website was made using GenCV. GenCV made by Mike Kramlich. Get it at %s-->' % GenCV_URL
 
