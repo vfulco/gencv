@@ -197,6 +197,12 @@ def create_codesample_page(codefname, codesamples_root, i):
     linecount = len(lns)
     return page, lang, linecount
 
+def code_samples_exist():
+    codesamples_root = 'profiles/%s/codesamples' % profile
+    codefnames = os.listdir(codesamples_root)
+    codefnames = filter(lambda fname: not fname.startswith('.'), codefnames)
+    return len(codefnames) > 0
+
 def create_codesamples_page(codesamplespage, baseurl):
     s = 'Code Samples' + EOL
 
@@ -230,7 +236,7 @@ def create_codesamples_page(codesamplespage, baseurl):
     create_file(gen_root+codesamplespage,s)
 
 def render_beliefs():
-    s = 'Observations & Beliefs' + EOL
+    s = EOL + 'Observations & Beliefs' + EOL
     lns = data_as_lines('beliefs')
     beliefs = []
     class Belief: pass
@@ -253,12 +259,16 @@ def render_beliefs():
             continue
         belief.body.append(ln.strip())
 
+    if len(beliefs) == 0:
+        return ''
+
     for b in beliefs:
         s += EOL
         for ln in b.body:
             s += tab() + ln + EOL
         tags = ', '.join(b.tags)
         s += tab(2) + ital('tags: %s' % tags) + EOL
+    s += EOL
     return s
 
 def obfuscate_email_for_scrapers(email):
@@ -271,107 +281,123 @@ def generate_cv_web(baseurl, name, title, location, summary, email, linkedin, qu
     s = 'Online CV' + EOL*2
     s += name + EOL
     s += title + EOL
-    s += location + EOL
+    if len(location) > 0:
+        s += location + EOL
     s += EOL
 
     imagefnames = os.listdir('profiles/%s/photos' % profile)
-    thumbs = {}
-    fulls = []
-    for imagefname in imagefnames:
-        if '.thumb.' in imagefname:
-            pcs = imagefname.split('.thumb.')
-            full = pcs[0] + '.' + pcs[1]
-            thumbs[full] = imagefname
-        else:
-            fulls.append(imagefname)
+    if len(imagefnames) > 0:
+        thumbs = {}
+        fulls = []
+        for imagefname in imagefnames:
+            if '.thumb.' in imagefname:
+                pcs = imagefname.split('.thumb.')
+                full = pcs[0] + '.' + pcs[1]
+                thumbs[full] = imagefname
+            else:
+                fulls.append(imagefname)
 
-    for full in fulls:
-        if full in thumbs:
-            s += thumbnail_to_image_link_local(thumbs[full],full)
-        else:
-            s += image_link_local(full)
-    s += EOL
-
-    s += EOL + 'Summary' + EOL
-    for dln in summary:
-        s += EOL + dln
-    s += EOL
-
-    s += EOL + 'Code Samples' + EOL*2
-    codesamplespage = 'pages/codesamples.html'
-    create_codesamples_page(codesamplespage,baseurl)
-    s += tab() + link('click here',baseurl+codesamplespage) + EOL
-
-    s += EOL + 'Employment' + EOL
-    for j in jobs:
+        for full in fulls:
+            if full in thumbs:
+                s += thumbnail_to_image_link_local(thumbs[full],full)
+            else:
+                s += image_link_local(full)
         s += EOL
-        s += tab() + j.title + EOL
-        s += tab() + link(j.company,j.website) + EOL
-        s += tab() + j.ffrom + ' - ' + j.to + EOL
-        s += tab() + 'company website: ' + link(j.website,j.website) + EOL
 
-    s += EOL + 'Education' + EOL
-    for edu in edus:
-        s += EOL + tab() + '%s, %s-%s' % (edu.school_name, edu.ffrom, edu.to)
-    s += EOL
-
-    s += EOL + 'Websites Created' + EOL
-    for ln in data_as_lines('websites_created'):
+    if len(summary) > 0:
+        s += EOL + 'Summary' + EOL
+        for dln in summary:
+            s += EOL + dln
         s += EOL
-        pcs = ln.split(',')
-        name = pcs[0].strip()
-        url = pcs[1].strip()
-        techs = pcs[2].strip()
-        techs = techs.split(';')
-        s += tab() + link(name,url) + EOL
-        s += tab() + ital('used: ' + ', '.join(techs)) + EOL
 
-    s += EOL + 'Software Created' + EOL
-    for ware in wares:
-        s += EOL + tab() + ital(ware.name) + EOL
-        s += tab() + EOL.join(ware.desc) + EOL
-        if ware.url is not None:
-            s += tab() + 'see it: ' + link(ware.url,ware.url) + EOL
+    if code_samples_exist():
+        s += EOL + 'Code Samples' + EOL*2
+        codesamplespage = 'pages/codesamples.html'
+        create_codesamples_page(codesamplespage,baseurl)
+        s += tab() + link('click here',baseurl+codesamplespage) + EOL
 
-    s += EOL + 'Presentations' + EOL*2
+    if len(jobs) > 0:
+        s += EOL + 'Employment' + EOL
+        for j in jobs:
+            s += EOL
+            s += tab() + j.title + EOL
+            s += tab() + link(j.company,j.website) + EOL
+            s += tab() + j.ffrom + ' - ' + j.to + EOL
+            s += tab() + 'company website: ' + link(j.website,j.website) + EOL
+
+    if len(edus) > 0:
+        s += EOL + 'Education' + EOL
+        for edu in edus:
+            s += EOL + tab() + '%s, %s-%s' % (edu.school_name, edu.ffrom, edu.to)
+        s += EOL
+
+    lns = data_as_lines('websites_created')
+    if len(lns) > 0:
+        s += EOL + 'Websites Created' + EOL
+        for ln in lns:
+            s += EOL
+            pcs = ln.split(',')
+            name = pcs[0].strip()
+            url = pcs[1].strip()
+            techs = pcs[2].strip()
+            techs = techs.split(';')
+            s += tab() + link(name,url) + EOL
+            s += tab() + ital('used: ' + ', '.join(techs)) + EOL
+
+    if len(wares) > 0:
+        s += EOL + 'Software Created' + EOL
+        for ware in wares:
+            s += EOL + tab() + ital(ware.name) + EOL
+            s += tab() + EOL.join(ware.desc) + EOL
+            if ware.url is not None:
+                s += tab() + 'see it: ' + link(ware.url,ware.url) + EOL
+
     fnames = os.listdir(gen_root+'presentations')
-    for fname in fnames:
-        txt = fname
-        url = baseurl + 'presentations/' + fname
-        s += tab() + link(txt,url) + EOL
+    if len(fnames) > 0:
+        s += EOL + 'Presentations' + EOL*2
+        for fname in fnames:
+            txt = fname
+            url = baseurl + 'presentations/' + fname
+            s += tab() + link(txt,url) + EOL
 
-    s += EOL + 'Blogs' + EOL*2
-    rows = []
-    for ln in data_as_lines('blogs'):
-        pcs = ln.split(',')
-        name = pcs[0].strip()
-        url = pcs[1].strip()
-        desc = pcs[2].strip()
-        row = (tab()+link(name,url), desc)
-        rows.append(row)
-        #s += tab() + link(name,url) + tab() + desc + EOL
-    s += table(rows) + EOL
+    lns = data_as_lines('blogs')
+    if len(lns) > 0:
+        s += EOL + 'Blogs' + EOL*2
+        rows = []
+        for ln in lns:
+            pcs = ln.split(',')
+            name = pcs[0].strip()
+            url = pcs[1].strip()
+            desc = pcs[2].strip()
+            row = (tab()+link(name,url), desc)
+            rows.append(row)
+            #s += tab() + link(name,url) + tab() + desc + EOL
+        s += table(rows) + EOL
 
-    s += EOL + render_beliefs() + EOL
+    s += render_beliefs()
 
-    s += EOL + 'Quotes' + EOL*2
-    for q in quotes:
-        s += tab() + quote(q.strip()) + EOL
+    if len(quotes) > 0:
+        s += EOL + 'Quotes' + EOL*2
+        for q in quotes:
+            s += tab() + quote(q.strip()) + EOL
 
-    s += EOL + 'Online Profiles' + EOL*2
-    s += tab() + link('LinkedIn.com',linkedin) + EOL
+    if len(linkedin) > 0:
+        s += EOL + 'Online Profiles' + EOL*2
+        s += tab() + link('LinkedIn.com',linkedin) + EOL
 
-    s += EOL + 'Downloadable Resumes' + EOL*2
     fnames = os.listdir(gen_root+'resumes')
-    for fname in fnames:
-        format = fname.split('.')[-1]
-        txt = fname
-        url = baseurl + 'resumes/' + fname
-        s += tab() + link(txt,url) + EOL
+    if len(fnames) > 0:
+        s += EOL + 'Downloadable Resumes' + EOL*2
+        for fname in fnames:
+            format = fname.split('.')[-1]
+            txt = fname
+            url = baseurl + 'resumes/' + fname
+            s += tab() + link(txt,url) + EOL
 
-    s += EOL + 'Contact Info' + EOL*2
-    email = obfuscate_email_for_scrapers(email)
-    s += tab() + 'email: ' + link(email,'mailto:'+email) + EOL
+    if len(email) > 0:
+        s += EOL + 'Contact Info' + EOL*2
+        email = obfuscate_email_for_scrapers(email)
+        s += tab() + 'email: ' + link(email,'mailto:'+email) + EOL
 
     s += '<!--This website was made using GenCV. GenCV made by Mike Kramlich. Get it at %s-->' % GenCV_URL
 
