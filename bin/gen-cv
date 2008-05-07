@@ -438,6 +438,7 @@ def generate_resume_pdf(baseurl, name, title, location, summary, email, linkedin
     parastyle = stylesheet['Normal']
     txtresumes = ['resume_default.txt','resume_alternate.txt']
     for txtresume in txtresumes:
+        if 'default' in txtresume: continue #TODO TMP HACK
         txtresume_base = '.'.join(txtresume.split('.')[:-1])
         pdf_fpath = gen_root + 'resumes/' + txtresume_base + '.pdf'
         size = letter
@@ -463,7 +464,7 @@ def generate_resume_pdf(baseurl, name, title, location, summary, email, linkedin
             if w_actual <= w_avail and h_actual <= h_avail:
                 h_avail -= h_actual
                 para.drawOn(c,left,h_avail)
-            else: raise ValueError, 'paragraph wont fit, needs %s x %s but only has %s x %a; text: "%s"' % (w_actual,h_actual,width,height,ln)
+            else: raise ValueError, 'paragraph wont fit, needs %s x %s but only has %s x %s; text: "%s"' % (w_actual,h_actual,width,height,ln)
         c.showPage()
         c.save()
 
