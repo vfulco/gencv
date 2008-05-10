@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.4
 
 '''
-GenCV: a tool for data-driven generation of resumes and CV websites
+GenCV: a tool for model-driven generation of resumes and CV websites for techies
 by Mike Kramlich
 '''
 
