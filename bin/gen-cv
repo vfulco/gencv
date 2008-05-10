@@ -12,7 +12,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph
+from reportlab.platypus import Paragraph, Frame, SimpleDocTemplate, Spacer
 
 GenCV_URL = 'http://github.com/mkramlich/gencv/tree/master'
 
@@ -106,6 +106,9 @@ def sort_jobs_recent_first(jobs):
 def html_encode(s):
     return escape(s, {'"':'&quot;'})
 
+def url_encode(url):
+    return url.replace(' ','%20')
+
 def get_model():
     lns = data_as_lines('main')
 
@@ -115,6 +118,7 @@ def get_model():
     title = value_on_line(lns,3)
     location = value_on_line(lns,4)
     linkedin = value_on_line(lns,5)
+    phone = value_on_line(lns,6)
 
     quotes = data_as_lines('quotes')
 
@@ -130,6 +134,9 @@ def get_model():
         job.ffrom = value_on_line(lns,2)
         job.to = value_on_line(lns,3)
         job.website = value_on_line(lns,4)
+        if len(lns) >= 7:
+            job.desc = lns[6:]
+        else: job.desc = None
         jobs.append(job)
     jobs = sort_jobs_recent_first(jobs)
 
@@ -147,10 +154,22 @@ def get_model():
         edu.desc = value_on_line(lns,4)
         edus.append(edu)
 
+    websites = []
+    class Website: pass
+    lns = data_as_lines('websites_created')
+    for ln in lns:
+        site = Website()
+        websites.append(site)
+        pcs = ln.split(',')
+        site.name = pcs[0].strip()
+        site.url = pcs[1].strip()
+        techs = pcs[2].strip()
+        site.techs = techs.split(';')
+
     wares = []
+    class Software: pass
     swroot = 'profiles/%s/data/software/' % profile
     wfnames = os.listdir(swroot)
-    class Software: pass
     for wfname in wfnames:
         fpath = swroot + wfname
         lns = file_as_lines(fpath)
@@ -164,9 +183,33 @@ def get_model():
         ware.desc = lns[rest:]
         wares.append(ware)
 
-    summary = data_as_lines('desc')
+    presens = []
+    class Presentation: pass
+    fnames = os.listdir(gen_root+'presentations')
+    for fname in fnames:
+        #print 'baseurl: %s' % baseurl
+        presen = Presentation()
+        presens.append(presen)
+        presen.name = '.'.join(fname.split('.')[:-1])
+        presen.relurl = 'presentations/' + fname
 
-    return baseurl, name, title, location, summary, email, linkedin, quotes, jobs, edus, wares
+    blogs = []
+    class Blog: pass
+    lns = data_as_lines('blogs')
+    for ln in lns:
+        blog = Blog()
+        blogs.append(blog)
+        pcs = ln.split(',')
+        blog.name = pcs[0].strip()
+        blog.url = pcs[1].strip()
+        blog.desc = pcs[2].strip()
+
+    summary = data_as_lines('desc')
+    for s in summary:
+        if s is None:
+            raise 'found it'
+
+    return baseurl, name, title, location, summary, email, phone, linkedin, quotes, jobs, edus, websites, wares, presens, blogs
 
 def create_codesample_page(codefname, codesamples_root, i):
     s = codefname + ':' + EOL
@@ -275,7 +318,7 @@ def render_beliefs():
 def obfuscate_email_for_scrapers(email):
     return '-'.join(email)
 
-def generate_cv_web(baseurl, name, title, location, summary, email, linkedin, quotes, jobs, edus, wares):
+def generate_cv_web(baseurl, name, title, location, summary, email, phone, linkedin, quotes, jobs, edus, websites, wares, presens, blogs):
     cmd('push-static-to-gen %s %s' % (profile, gen_root))
     cmd('chmod 644 %sresumes/*' % gen_root)
 
@@ -324,7 +367,7 @@ def generate_cv_web(baseurl, name, title, location, summary, email, linkedin, qu
             s += tab() + j.title + EOL
             s += tab() + link(j.company,j.website) + EOL
             s += tab() + j.ffrom + ' - ' + j.to + EOL
-            s += tab() + 'company website: ' + link(j.website,j.website) + EOL
+            s += tab() + link(j.website,j.website) + EOL
 
     if len(edus) > 0:
         s += EOL + 'Education' + EOL
@@ -332,18 +375,12 @@ def generate_cv_web(baseurl, name, title, location, summary, email, linkedin, qu
             s += EOL + tab() + '%s, %s-%s' % (edu.school_name, edu.ffrom, edu.to)
         s += EOL
 
-    lns = data_as_lines('websites_created')
-    if len(lns) > 0:
+    if len(websites) > 0:
         s += EOL + 'Websites Created' + EOL
-        for ln in lns:
+        for site in websites:
             s += EOL
-            pcs = ln.split(',')
-            name = pcs[0].strip()
-            url = pcs[1].strip()
-            techs = pcs[2].strip()
-            techs = techs.split(';')
-            s += tab() + link(name,url) + EOL
-            s += tab() + ital('used: ' + ', '.join(techs)) + EOL
+            s += tab() + link(site.name,site.url) + EOL
+            s += tab() + ital('used: ' + ', '.join(site.techs)) + EOL
 
     if len(wares) > 0:
         s += EOL + 'Software Created' + EOL
@@ -408,7 +445,7 @@ def generate_cv_web(baseurl, name, title, location, summary, email, linkedin, qu
 
     create_file(gen_root+'index.html',s)
 
-def generate_resume_txt(baseurl, name, title, location, summary, email, linkedin, quotes, jobs, edus, wares, resume_template='default'):
+def generate_resume_txt(baseurl, name, title, location, summary, email, phone, linkedin, quotes, jobs, edus, websites, wares, presens, blogs, resume_template='default'):
     s = 'Jobs:\n'
     def tab(): return '' * 4
     for j in jobs:
@@ -416,7 +453,12 @@ def generate_resume_txt(baseurl, name, title, location, summary, email, linkedin
         s += tab() + j.title + '\n'
         s += tab() + j.company + '\n'
         s += tab() + j.ffrom + ' - ' + j.to + '\n'
-        s += tab() + 'company website: ' + j.website + '\n'
+        if len(j.website) > 0:
+            s += tab() + j.website + '\n'
+        if j.desc is not None:
+            for ln in j.desc:
+                ln = ln.rstrip()
+                s += tab() + ln + '\n'
     jobs = s
     params = {
         'name' :     name,
@@ -433,40 +475,125 @@ def generate_resume_txt(baseurl, name, title, location, summary, email, linkedin
     fpath = gen_root + 'resumes/' + resume_fname
     create_file(fpath,s)
 
-def generate_resume_pdf(baseurl, name, title, location, summary, email, linkedin, quotes, jobs, edus, wares, resume_template='default'):
+def generate_resume_pdf(baseurl, name, title, location, summary, email, phone, linkedin, quotes, jobs, edus, websites, wares, presens, blogs, resume_template='default'):
     stylesheet = getSampleStyleSheet()
-    parastyle = stylesheet['Normal']
-    txtresumes = ['resume_default.txt','resume_alternate.txt']
-    for txtresume in txtresumes:
-        if 'default' in txtresume: continue #TODO TMP HACK
-        txtresume_base = '.'.join(txtresume.split('.')[:-1])
-        pdf_fpath = gen_root + 'resumes/' + txtresume_base + '.pdf'
-        size = letter
-        width, height = size
-        c = canvas.Canvas(pdf_fpath,pagesize=size)
-        txt_fpath = gen_root + 'resumes/' + txtresume
-        lns = file_as_lines(txt_fpath)
-        margin = inch / 2
-        left = margin
-        top = margin
-        w_avail = width - (left * 2)
-        h_avail = height - (top * 2)
-        for ln in lns:
-            ln = ln.strip()
-            if len(ln) == 0:
-                h_avail -= inch / 4
-                continue
-            ln = html_encode(ln)
-            para = Paragraph(ln,parastyle)
-            w_actual, h_actual = para.wrap(w_avail,h_avail)
-            #print '%s x %s for "%s..."' % (w_actual, h_actual,
-            #    len(ln) > 16 and ln[:16] or ln)
-            if w_actual <= w_avail and h_actual <= h_avail:
-                h_avail -= h_actual
-                para.drawOn(c,left,h_avail)
-            else: raise ValueError, 'paragraph wont fit, needs %s x %s but only has %s x %s; text: "%s"' % (w_actual,h_actual,width,height,ln)
-        c.showPage()
-        c.save()
+    ps = parastyle = stylesheet['Normal']
+    base = 'resume_' + name.replace(' ','_')
+    pdf_fpath = gen_root + 'resumes/' + base + '.pdf'
+    doc = SimpleDocTemplate(pdf_fpath) 
+    story = [] 
+
+    def blankline():
+        sp = Spacer(1, 0.125*inch)
+        story.append(sp)
+
+    def sectionspace():
+        sp = Spacer(1, 0.25*inch)
+        story.append(sp)
+
+    def p(txt, bold=False, section=False, ital=False, link=False):
+        txt = txt.rstrip()
+        if len(txt) == 0:
+            blankline()
+        else:
+            if link:
+                txt = '<a href="%s">%s</a>' % (url_encode(txt),txt)
+            else:
+                txt = html_encode(txt)
+                if section: txt = '<b><u>%s</u></b>' % txt
+                if bold: txt = '<b>%s</b>' % txt
+                if ital: txt = '<i>%s</i>' % txt
+            story.append(Paragraph(txt,ps))
+
+    def url(txt, **kwargs):
+        kwargs['link'] = True
+        p(txt,**kwargs)
+
+    p(name,bold=True)
+    p(title,bold=True)
+    p(location)
+    sectionspace()
+
+    for ln in summary:
+        if ln.startswith('http://'):
+            url(ln)
+        else:
+            p(ln)
+    sectionspace()
+
+    p('Contact Info',section=True)
+    blankline()
+    p('email: ' + email)
+    p('phone: ' + phone)
+    sectionspace()
+
+    if len(jobs) > 0:
+        p('Employment',section=True)
+        blankline()
+        for j in jobs:
+            #print 'doing %s' % j.title
+            p(j.title,bold=True)
+            p(j.company,bold=True)
+            p(j.ffrom + ' - ' + j.to,ital=True)
+            if len(j.website) > 0:
+                url(j.website)
+            if j.desc is not None:
+                blankline()
+                for ln in j.desc:
+                    p(ln)
+            sectionspace()
+
+    if len(edus) > 0:
+        p('Education',section=True)
+        blankline()
+        for e in edus:
+            p(e.school_name,bold=True)
+            p(e.topics,ital=True)
+            p(e.ffrom + ' - ' + e.to)
+            if len(e.desc) > 0:
+                blankline()
+                p(e.desc)
+            sectionspace()
+
+    if len(websites) > 0:
+        p('Websites Created',section=True)
+        blankline()
+        for site in websites:
+            p(site.name,ital=True)
+            url(site.url)
+            techmsg = ', '.join(site.techs)
+            p(techmsg)
+            sectionspace()
+
+    if len(wares) > 0:
+        p('Software Created',section=True)
+        blankline()
+        for ware in wares:
+            p(ware.name,ital=True)
+            for ln in ware.desc:
+                p(ln)
+            if ware.url is not None:
+                url(ware.url)
+            sectionspace()
+
+    if len(presens) > 0:
+        p('Presentations',section=True)
+        blankline()
+        for presen in presens:
+            p(presen.name,ital=True)
+            url(baseurl + presen.relurl)
+            sectionspace()
+
+    if len(blogs) > 0:
+        p('Blogs',section=True)
+        blankline()
+        for blog in blogs:
+            p(blog.name,ital=True)
+            p(blog.desc)
+            url(blog.url)
+            sectionspace()
+
+    doc.build(story)
 
 
 if __name__ == '__main__':
@@ -482,6 +609,7 @@ if __name__ == '__main__':
     if len(sys.argv) >= 3:
         model = list(model)
         model[0] = sys.argv[2]
+        #print 'replaced model[0] with: %s' % model[0]
 
     template_fnames = os.listdir(template_dir)
     for tfname in template_fnames:
