@@ -23,6 +23,24 @@ should_obfuscate_email_on_web = True
 
 EOL = '<br/>\n'
 
+class Model:
+    name = None
+    title = None
+    location = None
+    summary = None
+    email = None
+    phone = None
+    linkedin = None
+    jobs = None
+    edus = None
+    websites = None
+    wares = None
+    presens = None
+    blogs = None
+    beliefs = None
+    quotes = None
+    baseurl = None
+
 def cmd(cmdline):
     return commands.getoutput(cmdline)
 
@@ -110,19 +128,22 @@ def url_encode(url):
     return url.replace(' ','%20')
 
 def get_model():
+    m = Model()
+
     lns = data_as_lines('main')
+    m.baseurl = value_on_line(lns,0)
+    m.name = value_on_line(lns,1)
+    m.email = value_on_line(lns,2)
+    m.title = value_on_line(lns,3)
+    m.location = value_on_line(lns,4)
+    m.linkedin = value_on_line(lns,5)
+    m.phone = value_on_line(lns,6)
 
-    baseurl = value_on_line(lns,0)
-    name = value_on_line(lns,1)
-    email = value_on_line(lns,2)
-    title = value_on_line(lns,3)
-    location = value_on_line(lns,4)
-    linkedin = value_on_line(lns,5)
-    phone = value_on_line(lns,6)
+    m.summary = data_as_lines('desc')
 
-    quotes = data_as_lines('quotes')
+    m.quotes = data_as_lines('quotes')
 
-    jobs = []
+    m.jobs = []
     jobsroot = 'profiles/%s/data/jobs' % profile
     jobfnames = os.listdir(jobsroot)
     class Job: pass
@@ -137,10 +158,10 @@ def get_model():
         if len(lns) >= 7:
             job.desc = lns[6:]
         else: job.desc = None
-        jobs.append(job)
-    jobs = sort_jobs_recent_first(jobs)
+        m.jobs.append(job)
+    m.jobs = sort_jobs_recent_first(m.jobs)
 
-    edus = []
+    m.edus = []
     eduroot = 'profiles/%s/data/edu' % profile
     edufnames = os.listdir(eduroot)
     class Edu: pass
@@ -152,21 +173,21 @@ def get_model():
         edu.ffrom = value_on_line(lns,2)
         edu.to = value_on_line(lns,3)
         edu.desc = value_on_line(lns,4)
-        edus.append(edu)
+        m.edus.append(edu)
 
-    websites = []
+    m.websites = []
     class Website: pass
     lns = data_as_lines('websites_created')
     for ln in lns:
         site = Website()
-        websites.append(site)
+        m.websites.append(site)
         pcs = ln.split(',')
         site.name = pcs[0].strip()
         site.url = pcs[1].strip()
         techs = pcs[2].strip()
         site.techs = techs.split(';')
 
-    wares = []
+    m.wares = []
     class Software: pass
     swroot = 'profiles/%s/data/software/' % profile
     wfnames = os.listdir(swroot)
@@ -181,35 +202,52 @@ def get_model():
             rest = 2
         else: ware.url = None
         ware.desc = lns[rest:]
-        wares.append(ware)
+        m.wares.append(ware)
 
-    presens = []
+    m.presens = []
     class Presentation: pass
     fnames = os.listdir(gen_root+'presentations')
     for fname in fnames:
-        #print 'baseurl: %s' % baseurl
         presen = Presentation()
-        presens.append(presen)
+        m.presens.append(presen)
         presen.name = '.'.join(fname.split('.')[:-1])
         presen.relurl = 'presentations/' + fname
 
-    blogs = []
+    m.blogs = []
     class Blog: pass
     lns = data_as_lines('blogs')
     for ln in lns:
         blog = Blog()
-        blogs.append(blog)
+        m.blogs.append(blog)
         pcs = ln.split(',')
         blog.name = pcs[0].strip()
         blog.url = pcs[1].strip()
         blog.desc = pcs[2].strip()
 
-    summary = data_as_lines('desc')
-    for s in summary:
-        if s is None:
-            raise 'found it'
 
-    return baseurl, name, title, location, summary, email, phone, linkedin, quotes, jobs, edus, websites, wares, presens, blogs
+    lns = data_as_lines('beliefs')
+    m.beliefs = []
+    class Belief: pass
+    belief = None
+    for ln in lns:
+        if ln.startswith('tags:'):
+            belief = Belief()
+            m.beliefs.append(belief)
+            belief.body = []
+            pcs = ln.split(':')
+            tags = pcs[1].strip()
+            tags = tags.split(',')
+            tags2 = []
+            for t in tags:
+                tags2.append(t.strip())
+            tags = tags2
+            belief.tags = tags
+            continue
+        if ln.strip() == '':
+            continue
+        belief.body.append(ln.strip())
+
+    return m
 
 def create_codesample_page(codefname, codesamples_root, i):
     s = codefname + ':' + EOL
@@ -279,32 +317,11 @@ def create_codesamples_page(codesamplespage, baseurl):
 
     create_file(gen_root+codesamplespage,s)
 
-def render_beliefs():
-    s = EOL + 'Observations & Beliefs' + EOL
-    lns = data_as_lines('beliefs')
-    beliefs = []
-    class Belief: pass
-    belief = None
-    for ln in lns:
-        if ln.startswith('tags:'):
-            belief = Belief()
-            beliefs.append(belief)
-            belief.body = []
-            pcs = ln.split(':')
-            tags = pcs[1].strip()
-            tags = tags.split(',')
-            tags2 = []
-            for t in tags:
-                tags2.append(t.strip())
-            tags = tags2
-            belief.tags = tags
-            continue
-        if ln.strip() == '':
-            continue
-        belief.body.append(ln.strip())
-
+def render_beliefs(beliefs):
     if len(beliefs) == 0:
         return ''
+
+    s = EOL + 'Observations & Beliefs' + EOL
 
     for b in beliefs:
         s += EOL
@@ -318,15 +335,16 @@ def render_beliefs():
 def obfuscate_email_for_scrapers(email):
     return '-'.join(email)
 
-def generate_cv_web(baseurl, name, title, location, summary, email, phone, linkedin, quotes, jobs, edus, websites, wares, presens, blogs):
+def generate_cv_web(model):
+    m = model
     cmd('push-static-to-gen %s %s' % (profile, gen_root))
     cmd('chmod 644 %sresumes/*' % gen_root)
 
     s = 'Online CV' + EOL*2
-    s += name + EOL
-    s += title + EOL
-    if len(location) > 0:
-        s += location + EOL
+    s += m.name + EOL
+    s += m.title + EOL
+    if len(m.location) > 0:
+        s += m.location + EOL
     s += EOL
 
     imagefnames = os.listdir('profiles/%s/photos' % profile)
@@ -348,80 +366,73 @@ def generate_cv_web(baseurl, name, title, location, summary, email, phone, linke
                 s += image_link_local(full)
         s += EOL
 
-    if len(summary) > 0:
+    if len(m.summary) > 0:
         s += EOL + 'Summary' + EOL
-        for dln in summary:
-            s += EOL + dln
+        for ln in m.summary:
+            s += EOL + ln
         s += EOL
 
     if code_samples_exist():
         s += EOL + 'Code Samples' + EOL*2
         codesamplespage = 'pages/codesamples.html'
-        create_codesamples_page(codesamplespage,baseurl)
-        s += tab() + link('click here',baseurl+codesamplespage) + EOL
+        create_codesamples_page(codesamplespage,m.baseurl)
+        s += tab() + link('click here',m.baseurl+codesamplespage) + EOL
 
-    if len(jobs) > 0:
+    if len(m.jobs) > 0:
         s += EOL + 'Employment' + EOL
-        for j in jobs:
+        for j in m.jobs:
             s += EOL
             s += tab() + j.title + EOL
             s += tab() + link(j.company,j.website) + EOL
             s += tab() + j.ffrom + ' - ' + j.to + EOL
             s += tab() + link(j.website,j.website) + EOL
 
-    if len(edus) > 0:
+    if len(m.edus) > 0:
         s += EOL + 'Education' + EOL
-        for edu in edus:
+        for edu in m.edus:
             s += EOL + tab() + '%s, %s-%s' % (edu.school_name, edu.ffrom, edu.to)
         s += EOL
 
-    if len(websites) > 0:
+    if len(m.websites) > 0:
         s += EOL + 'Websites Created' + EOL
-        for site in websites:
+        for site in m.websites:
             s += EOL
             s += tab() + link(site.name,site.url) + EOL
             s += tab() + ital('used: ' + ', '.join(site.techs)) + EOL
 
-    if len(wares) > 0:
+    if len(m.wares) > 0:
         s += EOL + 'Software Created' + EOL
-        for ware in wares:
+        for ware in m.wares:
             s += EOL + tab() + ital(ware.name) + EOL
             s += tab() + EOL.join(ware.desc) + EOL
             if ware.url is not None:
                 s += tab() + 'see it: ' + link(ware.url,ware.url) + EOL
 
-    fnames = os.listdir(gen_root+'presentations')
-    if len(fnames) > 0:
+    if len(m.presens) > 0:
         s += EOL + 'Presentations' + EOL*2
-        for fname in fnames:
-            txt = fname
-            url = baseurl + 'presentations/' + fname
+        for presen in m.presens:
+            txt = presen.name
+            url = m.baseurl + presen.relurl
             s += tab() + link(txt,url) + EOL
 
-    lns = data_as_lines('blogs')
-    if len(lns) > 0:
+    if len(m.blogs) > 0:
         s += EOL + 'Blogs' + EOL*2
         rows = []
-        for ln in lns:
-            pcs = ln.split(',')
-            name = pcs[0].strip()
-            url = pcs[1].strip()
-            desc = pcs[2].strip()
-            row = (tab()+link(name,url), desc)
+        for blog in m.blogs:
+            row = (tab()+link(blog.name,blog.url), blog.desc)
             rows.append(row)
-            #s += tab() + link(name,url) + tab() + desc + EOL
         s += table(rows) + EOL
 
-    s += render_beliefs()
+    s += render_beliefs(m.beliefs)
 
-    if len(quotes) > 0:
+    if len(m.quotes) > 0:
         s += EOL + 'Quotes' + EOL*2
-        for q in quotes:
+        for q in m.quotes:
             s += tab() + quote(q.strip()) + EOL
 
-    if len(linkedin) > 0:
+    if len(m.linkedin) > 0:
         s += EOL + 'Online Profiles' + EOL*2
-        s += tab() + link('LinkedIn.com',linkedin) + EOL
+        s += tab() + link('LinkedIn.com',m.linkedin) + EOL
 
     fnames = os.listdir(gen_root+'resumes')
     if len(fnames) > 0:
@@ -429,26 +440,28 @@ def generate_cv_web(baseurl, name, title, location, summary, email, phone, linke
         for fname in fnames:
             format = fname.split('.')[-1]
             txt = fname
-            url = baseurl + 'resumes/' + fname
+            url = m.baseurl + 'resumes/' + fname
             s += tab() + link(txt,url) + EOL
 
-    if len(email) > 0:
+    if len(m.email) > 0:
         s += EOL + 'Contact Info' + EOL*2
         if should_obfuscate_email_on_web:
-            email = obfuscate_email_for_scrapers(email)
+            email = obfuscate_email_for_scrapers(m.email)
             s += tab() + 'email: ' + email + EOL
             s += tab() + ital("NOTE: Email address above is obfuscated to fight spammers/scrapers. Remove extra -'s.") + EOL
         else:
-            s += tab() + 'email: ' + link(email,'mailto:'+email) + EOL
+            s += tab() + 'email: ' + link(m.email,'mailto:'+m.email) + EOL
 
     s += '<!--This website was made using GenCV. GenCV made by Mike Kramlich. Get it at %s-->' % GenCV_URL
 
     create_file(gen_root+'index.html',s)
 
-def generate_resume_txt(baseurl, name, title, location, summary, email, phone, linkedin, quotes, jobs, edus, websites, wares, presens, blogs, resume_template='default'):
+def generate_resume_txt(model, resume_template='default'):
+    m = model
+
     s = 'Jobs:\n'
     def tab(): return '' * 4
-    for j in jobs:
+    for j in m.jobs:
         s += '\n'
         s += tab() + j.title + '\n'
         s += tab() + j.company + '\n'
@@ -461,10 +474,10 @@ def generate_resume_txt(baseurl, name, title, location, summary, email, phone, l
                 s += tab() + ln + '\n'
     jobs = s
     params = {
-        'name' :     name,
-        'location' : location,
-        'summary' :  'Summary:\n\n' + ''.join(summary),
-        'email' :    email,
+        'name' :     m.name,
+        'location' : m.location,
+        'summary' :  'Summary:\n\n' + ''.join(m.summary),
+        'email' :    m.email,
         'jobs' :     jobs}
     out_lns = []
     templ_lns = file_as_lines('%s/%s' % (template_dir,resume_template))
@@ -475,10 +488,12 @@ def generate_resume_txt(baseurl, name, title, location, summary, email, phone, l
     fpath = gen_root + 'resumes/' + resume_fname
     create_file(fpath,s)
 
-def generate_resume_pdf(baseurl, name, title, location, summary, email, phone, linkedin, quotes, jobs, edus, websites, wares, presens, blogs, resume_template='default'):
+def generate_resume_pdf(model, resume_template='default'):
+    m = model
+
     stylesheet = getSampleStyleSheet()
     ps = parastyle = stylesheet['Normal']
-    base = 'resume_' + name.replace(' ','_')
+    base = 'resume_' + m.name.replace(' ','_')
     pdf_fpath = gen_root + 'resumes/' + base + '.pdf'
     doc = SimpleDocTemplate(pdf_fpath) 
     story = [] 
@@ -509,12 +524,12 @@ def generate_resume_pdf(baseurl, name, title, location, summary, email, phone, l
         kwargs['link'] = True
         p(txt,**kwargs)
 
-    p(name,bold=True)
-    p(title,bold=True)
-    p(location)
+    p(m.name,bold=True)
+    p(m.title,bold=True)
+    p(m.location)
     sectionspace()
 
-    for ln in summary:
+    for ln in m.summary:
         if ln.startswith('http://'):
             url(ln)
         else:
@@ -523,15 +538,14 @@ def generate_resume_pdf(baseurl, name, title, location, summary, email, phone, l
 
     p('Contact Info',section=True)
     blankline()
-    p('email: ' + email)
-    p('phone: ' + phone)
+    p('email: ' + m.email)
+    p('phone: ' + m.phone)
     sectionspace()
 
-    if len(jobs) > 0:
+    if len(m.jobs) > 0:
         p('Employment',section=True)
         blankline()
-        for j in jobs:
-            #print 'doing %s' % j.title
+        for j in m.jobs:
             p(j.title,bold=True)
             p(j.company,bold=True)
             p(j.ffrom + ' - ' + j.to,ital=True)
@@ -543,10 +557,10 @@ def generate_resume_pdf(baseurl, name, title, location, summary, email, phone, l
                     p(ln)
             sectionspace()
 
-    if len(edus) > 0:
+    if len(m.edus) > 0:
         p('Education',section=True)
         blankline()
-        for e in edus:
+        for e in m.edus:
             p(e.school_name,bold=True)
             p(e.topics,ital=True)
             p(e.ffrom + ' - ' + e.to)
@@ -555,20 +569,20 @@ def generate_resume_pdf(baseurl, name, title, location, summary, email, phone, l
                 p(e.desc)
             sectionspace()
 
-    if len(websites) > 0:
+    if len(m.websites) > 0:
         p('Websites Created',section=True)
         blankline()
-        for site in websites:
+        for site in m.websites:
             p(site.name,ital=True)
             url(site.url)
             techmsg = ', '.join(site.techs)
             p(techmsg)
             sectionspace()
 
-    if len(wares) > 0:
+    if len(m.wares) > 0:
         p('Software Created',section=True)
         blankline()
-        for ware in wares:
+        for ware in m.wares:
             p(ware.name,ital=True)
             for ln in ware.desc:
                 p(ln)
@@ -576,18 +590,18 @@ def generate_resume_pdf(baseurl, name, title, location, summary, email, phone, l
                 url(ware.url)
             sectionspace()
 
-    if len(presens) > 0:
+    if len(m.presens) > 0:
         p('Presentations',section=True)
         blankline()
-        for presen in presens:
+        for presen in m.presens:
             p(presen.name,ital=True)
-            url(baseurl + presen.relurl)
+            url(m.baseurl + presen.relurl)
             sectionspace()
 
-    if len(blogs) > 0:
+    if len(m.blogs) > 0:
         p('Blogs',section=True)
         blankline()
-        for blog in blogs:
+        for blog in m.blogs:
             p(blog.name,ital=True)
             p(blog.desc)
             url(blog.url)
@@ -607,16 +621,12 @@ if __name__ == '__main__':
     model = get_model()
 
     if len(sys.argv) >= 3:
-        model = list(model)
-        model[0] = sys.argv[2]
-        #print 'replaced model[0] with: %s' % model[0]
+        model.baseurl = sys.argv[2]
 
     template_fnames = os.listdir(template_dir)
     for tfname in template_fnames:
-        m = list(model)
-        m.append(tfname)
-        generate_resume_txt(*m)
+        generate_resume_txt(model,tfname)
 
-    generate_resume_pdf(*model)
+    generate_resume_pdf(model)
 
-    generate_cv_web(*model)
+    generate_cv_web(model)
