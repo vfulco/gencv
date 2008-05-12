@@ -31,7 +31,7 @@ For production deployment:
     A web server that you can configure to serve static files, and file space on which to host them, and you have an ability to upload the files there somehow.
     You do not need Python or shell scripting ability in production.
 
-Not too hard, eh? Though we don't provide any of the above, it should be pretty easy for you to get them if you don't already. Mac OS X needs ReportLab but already has Python. It's pretty easy and cheap to get Linux web hosting for production deployement. If you want to run GenCV on Windows, I'm sorry... No, really. I'm sorry. But seriously, you'll have to install Python & ReportLab and that's it. Have not tested it on Windows, nor do I want to. If someone does and finds a prblem let me know or even better submit a patch to me that fixes it.
+Not too hard, eh? Though we don't provide any of the above, it should be pretty easy for you to get them if you don't already. Mac OS X needs ReportLab but already has Python. It's pretty easy and cheap to get Linux web hosting for production deployement. If you want to run GenCV on Windows, I'm sorry... No, really. I'm sorry. But seriously, you'll have to install Python & ReportLab and that's it. Have not tested it on Windows, nor do I want to. If someone does and finds a problem let me know or even better submit a patch to me that fixes it.
 
 Instructions:
 
